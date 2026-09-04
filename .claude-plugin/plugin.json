@@ -1,0 +1,10 @@
+{
+  "name": "ccauto",
+  "description": "Policy-driven auto-approval of permission prompts: rules first, optional LLM decider, human fallback",
+  "version": "0.1.0",
+  "author": {
+    "name": "Hinaser",
+    "email": "rindo.hinase@gmail.com"
+  },
+  "license": "MIT"
+}

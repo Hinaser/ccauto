@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/ccauto.js\" hook",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

