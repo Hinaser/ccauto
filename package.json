@@ -1,5 +1,5 @@
 {
-  "name": "ccauto",
+  "name": "@hinaser/ccauto",
   "version": "0.1.0",
   "description": "Policy-driven auto-approval of Claude Code permission prompts, as a PermissionRequest hook",
   "license": "MIT",
@@ -23,6 +23,9 @@
   "type": "module",
   "bin": {
     "ccauto": "bin/ccauto.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "test": "node --test"

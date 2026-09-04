@@ -51,9 +51,10 @@ jobs:
 
       - name: Refuse to republish an existing version
         run: |
+          name="$(node -p "require('./package.json').name")"
           pkg="$(node -p "require('./package.json').version")"
-          if npm view "ccauto@$pkg" version >/dev/null 2>&1; then
-            echo "::error::ccauto@$pkg is already on the registry; versions are immutable"
+          if npm view "$name@$pkg" version >/dev/null 2>&1; then
+            echo "::error::$name@$pkg is already on the registry; versions are immutable"
             exit 1
           fi
 

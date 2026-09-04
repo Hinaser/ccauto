@@ -81,8 +81,8 @@ never saw is otherwise invisible.
 ## Install
 
 ```sh
-npm install -g ccauto   # get the command
-ccauto install          # let Claude Code use it
+npm install -g @hinaser/ccauto   # get the command
+ccauto install                   # let Claude Code use it
 ```
 
 `ccauto install` adds one entry to `~/.claude/settings.json`; from then on
